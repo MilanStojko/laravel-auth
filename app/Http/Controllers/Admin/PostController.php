@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Post;
+use Illuminate\Support\Str;
 
 class PostController extends Controller
 {
@@ -13,6 +14,16 @@ class PostController extends Controller
         'title'=>'required|max:50',
         'content'=>'required'
     ];
+
+    protected function slug($title = "", $id = ""){
+        $tmp = Str::slug($title);
+        $count = 1;
+        while(Post::where('slug', $tmp)->where('id', '!=', $id)->first()){
+            $tmp = Str::slug($title)."-".$count;
+            $count ++;
+        }
+        return $tmp;
+    }
     /**
      * Display a listing of the resource.
      *
@@ -45,21 +56,23 @@ class PostController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate($this->$validation);
+        $request->validate( $this->validation);
 
         $form_data = $request->all();
 
-        $slugTmp = Str::slug($form_data['title']);
+        // $slugTmp = Str::slug($form_data['title']);
 
         //check slug existing
-        $count = 1;
-        while(Post::where('slug', $slugTmp)->first()){
-            $slugTmp = Str::slug($form_data['title'])."-".$count;
-            $count ++;
-        }
+        // $count = 1;
+        // while(Post::where('slug', $slugTmp)->first()){
+        //     $slugTmp = Str::slug($form_data['title'])."-".$count;
+        //     $count ++;
+        // }
+        $form_data['slug']=$this->slug($form_data["title"]);
+        
 
         //slug existing 
-        $form_data['slug'] = $slugTmp;
+        //$form_data['slug'] = $slugTmp;
         $newPost = new Post();
 
         $newPost->fill($form_data);
@@ -99,22 +112,11 @@ class PostController extends Controller
      */
     public function update(Request $request, Post $post)
     {
-        $request->validate($this->$validation);
+        $request->validate( $this->validation);
 
         $data = $request->all();
 
-        if($post->title == $data['title']){
-            $slug = $data['slug'];
-        }
-        else{
-            $slug = Str::slug($data['title']);
-            $count = 1;
-            while(Post::where('slug', $slug)->where('id', '!=', $post->id)->first()){
-                $slug = Str::slug($data['title'])."-".$count;
-                $count ++;
-            }
-        }
-        $data['slug'] = $slug;
+        $data["slug"] = ($post->title == $data['title']) ? $post->slug : $this->slug($data["title"], $post->id);
 
         $post->update($data);
         return redirect()->route('admin.posts.index');
